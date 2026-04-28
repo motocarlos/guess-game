@@ -1,51 +1,38 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Guess Game</title>
-  <meta name="theme-color" content="#007aff" />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Guess Game" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Guess App</title>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
-</head>
-<body>
-  <div id="app">
-    <header>
-      <h1>Guess Game</h1>
-      <div id="userInfo"></div>
-    </header>
+  <link rel="manifest" href="manifest.json">
 
-    <section class="card">
-      <h2>Neues Event</h2>
-      <input id="eventTitle" type="text" placeholder="Event-Titel" />
-      <button onclick="createEvent()">Event erstellen</button>
-    </section>
-
-    <section class="card">
-      <h2>Events</h2>
-      <div id="events"></div>
-    </section>
-
-    <section class="card">
-      <h2>Leaderboard</h2>
-      <div id="leaderboard"></div>
-    </section>
-  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
 
   <script src="firebase.js"></script>
-  <script src="app.js"></script>
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js");
-    }
-  </script>
+  <script src="app.js" defer></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h1>Guess App</h1>
+
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+<button onclick="joinGroup()">Gruppe</button>
+
+<div>
+  <input id="title" placeholder="Event">
+  <button onclick="createEvent()">Erstellen</button>
+</div>
+
+<div id="content"></div>
+
+<h2>Leaderboard</h2>
+<div id="leaderboard"></div>
+
 </body>
 </html>
