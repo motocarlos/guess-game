@@ -1,88 +1,86 @@
-let currentUser = null;
-let currentGroup = null;
-let currentUsername = null;
+let user = null;
+let userData = null;
 let currentTab = "events";
 
 // AUTH STATE
-auth.onAuthStateChanged(async (user) => {
-  if (user) {
-    currentUser = user;
+auth.onAuthStateChanged(async (u) => {
+  user = u;
 
-    const doc = await db.collection("users").doc(user.uid).get();
-
-    if (!doc.exists) {
-      const username = prompt("Username wählen:");
-      await db.collection("users").doc(user.uid).set({
-        username,
-        group: null,
-        points: 0,
-        isAdmin: false
-      });
-      currentUsername = username;
-    } else {
-      const data = doc.data();
-      currentUsername = data.username;
-      currentGroup = data.group;
-    }
-
-    document.getElementById("userStatus").innerText =
-      "👤 " + currentUsername;
-
+  if (!user) {
+    document.getElementById("userStatus").innerText = "Nicht eingeloggt";
     render();
-  } else {
-    document.getElementById("userStatus").innerText =
-      "Nicht eingeloggt";
+    return;
   }
+
+  const ref = db.collection("users").doc(user.uid);
+  let doc = await ref.get();
+
+  if (!doc.exists) {
+    const username = prompt("Username:");
+    await ref.set({
+      username,
+      group: null,
+      points: 0,
+      isAdmin: false
+    });
+    doc = await ref.get();
+  }
+
+  userData = doc.data();
+
+  document.getElementById("userStatus").innerText =
+    "👤 " + userData.username;
+
+  render();
 });
 
-// LOGIN
+// LOGIN / REGISTER
 function login() {
   const email = prompt("Email:");
   const pass = prompt("Passwort:");
 
   auth.signInWithEmailAndPassword(email, pass)
-    .catch(() => alert("Login fehlgeschlagen"));
+    .catch(e => alert(e.message));
 }
 
-// REGISTER
 function register() {
   const email = prompt("Email:");
   const pass = prompt("Passwort:");
 
   auth.createUserWithEmailAndPassword(email, pass)
-    .catch(() => alert("Registrierung fehlgeschlagen"));
+    .catch(e => alert(e.message));
 }
 
-// -------------------
-// 👥 GRUPPEN SYSTEM
-// -------------------
+// ----------------
+// GROUPS
+// ----------------
 
-// Gruppe erstellen
 async function createGroup() {
   const name = prompt("Gruppenname:");
+  if (!name) return;
 
   const code = Math.random().toString(36).substring(2,8);
 
   await db.collection("groups").doc(code).set({
     name,
-    creator: currentUser.uid
+    creator: user.uid
   });
 
-  await db.collection("users").doc(currentUser.uid).update({
+  await db.collection("users").doc(user.uid).update({
     group: code,
     isAdmin: true
   });
 
-  currentGroup = code;
+  userData.group = code;
+  userData.isAdmin = true;
 
-  alert("Code: " + code + " (teilen!)");
-
+  alert("Gruppe erstellt!\nCode: " + code);
   render();
 }
 
-// Gruppe beitreten
 async function joinGroup() {
-  const code = prompt("Code eingeben:");
+  const code = prompt("Code:");
+  if (!code) return;
 
   const group = await db.collection("groups").doc(code).get();
 
@@ -91,33 +89,38 @@ async function joinGroup() {
     return;
   }
 
-  await db.collection("users").doc(currentUser.uid).update({
+  await db.collection("users").doc(user.uid).update({
     group: code,
     isAdmin: false
   });
 
-  currentGroup = code;
+  userData.group = code;
+  userData.isAdmin = false;
+
   render();
 }
 
-// -------------------
-// 🎮 EVENTS
-// -------------------
+// ----------------
+// EVENTS
+// ----------------
 
 async function createEvent() {
-  if (!currentGroup) {
-    alert("Du bist in keiner Gruppe!");
+  const title = document.getElementById("title").value;
+
+  if (!userData.group) {
+    alert("Erst Gruppe beitreten!");
     return;
   }
 
-  const title = document.getElementById("title").value;
-
-  if (!title) return;
+  if (!title) {
+    alert("Titel fehlt");
+    return;
+  }
 
   await db.collection("events").add({
     title,
-    group: currentGroup,
-    creator: currentUser.uid,
+    group: userData.group,
+    creator: user.uid,
     closed: false,
     createdAt: Date.now()
   });
@@ -125,51 +128,59 @@ async function createEvent() {
   document.getElementById("title").value = "";
 }
 
-// Tipp
+// GUESS
 async function guess(eventId) {
-  const value = parseInt(prompt("Minuten:"));
+  const val = parseInt(prompt("Minuten:"));
+
+  if (isNaN(val)) return;
 
   const ref = db.collection("events")
     .doc(eventId)
     .collection("guesses")
-    .doc(currentUser.uid);
+    .doc(user.uid);
 
   const doc = await ref.get();
 
   if (doc.exists) {
-    alert("Schon getippt!");
+    alert("Du hast schon getippt!");
     return;
   }
 
-  await ref.set({ value });
+  await ref.set({ value: val });
 }
 
-// Event beenden
+// CLOSE EVENT
 async function closeEvent(eventId) {
-  const real = parseInt(prompt("Echter Wert:"));
+  if (!userData.isAdmin) {
+    alert("Nur Admin!");
+    return;
+  }
 
-  const guesses = await db.collection("events")
+  const real = parseInt(prompt("Echter Wert:"));
+  if (isNaN(real)) return;
+
+  const snap = await db.collection("events")
     .doc(eventId)
     .collection("guesses")
     .get();
 
-  let best = null;
-  let bestDiff = 999;
+  let results = [];
 
-  guesses.forEach(doc => {
-    const diff = Math.abs(doc.data().value - real);
-
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = doc.id;
-    }
+  snap.forEach(doc => {
+    results.push({
+      uid: doc.id,
+      diff: Math.abs(doc.data().value - real)
+    });
   });
 
-  const points = Math.max(10 - bestDiff, 0);
+  results.sort((a,b) => a.diff - b.diff);
 
-  if (best) {
-    await db.collection("users").doc(best).update({
-      points: firebase.firestore.FieldValue.increment(points)
+  const rewards = [10,6,3];
+
+  for (let i=0; i<results.length && i<3; i++) {
+    const r = results[i];
+    await db.collection("users").doc(r.uid).update({
+      points: firebase.firestore.FieldValue.increment(rewards[i])
     });
   }
 
@@ -179,30 +190,29 @@ async function closeEvent(eventId) {
   });
 }
 
-// -------------------
-// 📱 NAVIGATION
-// -------------------
+// ----------------
+// NAVIGATION
+// ----------------
 
 function switchTab(tab) {
   currentTab = tab;
 
-  document.querySelectorAll(".tabbar button").forEach(btn =>
-    btn.classList.remove("active")
-  );
+  document.querySelectorAll(".tabbar button")
+    .forEach(b => b.classList.remove("active"));
 
   event.target.classList.add("active");
 
   render();
 }
 
-// -------------------
-// 🎨 RENDER
-// -------------------
+// ----------------
+// RENDER
+// ----------------
 
 function render() {
   const el = document.getElementById("content");
 
-  if (!currentUser) {
+  if (!user) {
     el.innerHTML = `
       <button onclick="login()">Login</button>
       <button onclick="register()">Register</button>
@@ -210,38 +220,27 @@ function render() {
     return;
   }
 
-  if (currentTab === "events") {
-    renderEvents(el);
-  }
-
-  if (currentTab === "create") {
-    renderCreate(el);
-  }
-
-  if (currentTab === "leaderboard") {
-    renderLeaderboard(el);
-  }
-
-  if (currentTab === "groups") {
-    renderGroups(el);
-  }
+  if (currentTab === "events") renderEvents(el);
+  if (currentTab === "create") renderCreate(el);
+  if (currentTab === "leaderboard") renderLeaderboard(el);
+  if (currentTab === "groups") renderGroups(el);
 }
 
 // EVENTS VIEW
 function renderEvents(el) {
   el.innerHTML = "<h2>Aktuelle Wetten</h2>";
 
-  if (!currentGroup) {
+  if (!userData.group) {
     el.innerHTML += "Keine Gruppe";
     return;
   }
 
   db.collection("events")
-    .where("group", "==", currentGroup)
-    .onSnapshot(snapshot => {
+    .where("group","==",userData.group)
+    .onSnapshot(snap => {
       el.innerHTML = "<h2>Aktuelle Wetten</h2>";
 
-      snapshot.forEach(doc => {
+      snap.forEach(doc => {
         const e = doc.data();
 
         let div = document.createElement("div");
@@ -252,7 +251,7 @@ function renderEvents(el) {
         if (!e.closed) {
           div.innerHTML += `<button onclick="guess('${doc.id}')">Tippen</button>`;
 
-          if (e.creator === currentUser.uid) {
+          if (userData.isAdmin) {
             div.innerHTML += `<button onclick="closeEvent('${doc.id}')">Beenden</button>`;
           }
         } else {
@@ -264,7 +263,7 @@ function renderEvents(el) {
     });
 }
 
-// CREATE VIEW
+// CREATE
 function renderCreate(el) {
   el.innerHTML = `
     <h2>Neue Wette</h2>
@@ -278,28 +277,27 @@ function renderLeaderboard(el) {
   el.innerHTML = "<h2>Leaderboard</h2>";
 
   db.collection("users")
-    .where("group", "==", currentGroup)
-    .onSnapshot(snapshot => {
+    .where("group","==",userData.group)
+    .onSnapshot(snap => {
       let arr = [];
+      snap.forEach(doc => arr.push(doc.data()));
 
-      snapshot.forEach(doc => arr.push(doc.data()));
+      arr.sort((a,b)=>b.points-a.points);
 
-      arr.sort((a,b) => b.points - a.points);
+      el.innerHTML = "<h2>Leaderboard</h2>";
 
       arr.forEach(u => {
-        el.innerHTML += `
-          <div class="card">${u.username}: ${u.points}</div>
-        `;
+        el.innerHTML += `<div class="card">${u.username}: ${u.points}</div>`;
       });
     });
 }
 
-// GROUPS VIEW
+// GROUPS
 function renderGroups(el) {
   el.innerHTML = `
     <h2>Gruppen</h2>
     <button onclick="createGroup()">Neue Gruppe</button>
     <button onclick="joinGroup()">Beitreten</button>
-    <p>Aktuelle Gruppe: ${currentGroup || "Keine"}</p>
+    <p>Code: ${userData.group || "-"}</p>
   `;
 }
