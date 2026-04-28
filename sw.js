@@ -1,29 +1,20 @@
-const CACHE_NAME = "guess-game-v1";
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./style.css",
-  "./app.js",
-  "./firebase.js",
-  "./manifest.json"
-];
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
 
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
+firebase.initializeApp({
+  apiKey: "DEIN_API_KEY",
+  projectId: "DEIN_PROJECT_ID",
+  messagingSenderId: "DEINE_ID",
+  appId: "DEINE_APP_ID"
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => key !== CACHE_NAME && caches.delete(key)))
-    )
-  );
-});
+const messaging = firebase.messaging();
 
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+messaging.onBackgroundMessage(payload => {
+  self.registration.showNotification(
+    payload.notification.title,
+    {
+      body: payload.notification.body
+    }
   );
 });
