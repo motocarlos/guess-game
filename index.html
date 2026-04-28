@@ -1,11 +1,14 @@
-<!DOCTYPE html>
-<html>
 <head>
   <meta charset="UTF-8">
-  <title>Guess App</title>
+
+  <!-- ✅ HIER rein -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <title>Guess Game</title>
 
   <link rel="manifest" href="manifest.json">
-
+  
+  <!-- Firebase Scripts -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
@@ -15,24 +18,3 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-
-<body>
-
-<h1>Guess App</h1>
-
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
-<button onclick="joinGroup()">Gruppe</button>
-
-<div>
-  <input id="title" placeholder="Event">
-  <button onclick="createEvent()">Erstellen</button>
-</div>
-
-<div id="content"></div>
-
-<h2>Leaderboard</h2>
-<div id="leaderboard"></div>
-
-</body>
-</html>
