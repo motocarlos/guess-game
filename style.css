@@ -1,137 +1,143 @@
-/* BASE */
+:root {
+    --neon-cyan: #00f2ff;
+    --neon-pink: #ff00e0;
+    --glass: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --bg-dark: #05070a;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont;
-  background: linear-gradient(180deg, #f2f2f7, #e5e5ea);
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at 50% -20%, #1a2a6c, transparent);
+    color: white;
+    font-family: -apple-system, "SF Pro Display", sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Zoom & Scrolling auf Body-Ebene verhindern */
+    display: flex;
+    flex-direction: column;
 }
 
-/* APP CONTAINER */
-.app {
-  padding-top: env(safe-area-inset-top);
+/* Header / Willkommens-Banner */
+header {
+    height: 60px;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 10;
 }
 
-/* HEADER (Glass Style) */
-.header {
-  position: sticky;
-  top: 0;
-  backdrop-filter: blur(30px);
-  background: rgba(255,255,255,0.6);
-  padding: 20px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+.neon-text {
+    text-shadow: 0 0 10px var(--neon-cyan);
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 26px;
+/* Hauptinhalt */
+main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: 100px; /* Platz für Nav */
 }
 
-#userStatus {
-  font-size: 13px;
-  color: #666;
+/* Liquid Glass Buttons */
+.btn-liquid {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    padding: 16px;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 10px 0;
+    width: 100%;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-/* CONTENT */
-#content {
-  padding: 15px;
-  padding-bottom: 100px;
+.btn-liquid:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 20px var(--neon-cyan);
 }
 
-/* GLASS CARDS */
-.card {
-  background: rgba(255,255,255,0.6);
-  backdrop-filter: blur(25px);
-  border-radius: 24px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow:
-    0 10px 30px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.2s ease;
+.btn-primary {
+    border-color: var(--neon-cyan);
+    box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.2);
 }
 
-/* Card Press Animation */
-.card:active {
-  transform: scale(0.97);
+/* Auth-Section */
+#auth-ui {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 50px;
 }
 
-/* BUTTONS */
-button {
-  width: 100%;
-  padding: 16px;
-  border-radius: 20px;
-  border: none;
-  font-weight: 600;
-  font-size: 16px;
-
-  background: linear-gradient(180deg, #0a84ff, #0066ff);
-  color: white;
-
-  box-shadow: 0 6px 20px rgba(0,122,255,0.3);
-  transition: all 0.2s ease;
+.input-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 15px;
+    color: white;
+    outline: none;
 }
 
-/* Button press */
-button:active {
-  transform: scale(0.96);
-  opacity: 0.9;
+/* Bottom Navigation */
+nav {
+    position: fixed;
+    bottom: 25px;
+    left: 20px;
+    right: 20px;
+    height: 75px;
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(25px);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
 }
 
-/* INPUT */
-input {
-  width: 100%;
-  padding: 16px;
-  border-radius: 20px;
-  border: none;
-  margin-bottom: 10px;
-  font-size: 16px;
-
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(20px);
+.nav-btn {
+    background: none;
+    border: none;
+    color: white;
+    opacity: 0.4;
+    transition: 0.3s;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* TAB BAR (iOS 26 Glass) */
-.tabbar {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  height: 80px;
-
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-
-  backdrop-filter: blur(40px);
-  background: rgba(255,255,255,0.6);
-
-  border-top: 1px solid rgba(0,0,0,0.05);
-}
-
-/* TAB BUTTONS */
-.tabbar button {
-  background: none;
-  color: #888;
-  font-size: 22px;
-  box-shadow: none;
-}
-
-/* ACTIVE TAB */
-.tabbar button.active {
-  color: #0a84ff;
-  transform: scale(1.2);
-}
-
-/* ANIMATION */
-.fade {
-  animation: fade 0.25s ease;
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
+.nav-btn.active {
     opacity: 1;
-    transform: translateY(0);
-  }
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+
+/* Leaderboard & Listen */
+.list-item {
+    background: var(--glass);
+    margin: 8px 0;
+    padding: 15px;
+    border-radius: 15px;
+    display: flex;
+    justify-content: space-between;
+    border-left: 3px solid var(--neon-pink);
 }
