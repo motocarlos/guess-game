@@ -1,127 +1,178 @@
-let currentUser = localStorage.getItem("username") || prompt("Dein Name?");
-if (currentUser) localStorage.setItem("username", currentUser);
+let currentUser = null;
+let currentGroup = null;
 
-const userInfo = document.getElementById("userInfo");
-userInfo.textContent = currentUser ? `Angemeldet als: ${currentUser}` : "";
+// LOGIN
+function register() {
+  const email = prompt("Email:");
+  const pass = prompt("Passwort:");
+  const username = prompt("Username:");
 
-async function createEvent() {
-  const title = document.getElementById("eventTitle").value.trim();
-  if (!title) return alert("Bitte Titel eingeben.");
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(res => {
+      currentUser = res.user;
 
-  await db.collection("events").add({
+      db.collection("users").doc(currentUser.uid).set({
+        username,
+        group: null,
+        points: 0
+      });
+    });
+}
+
+function login() {
+  const email = prompt("Email:");
+  const pass = prompt("Passwort:");
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(res => {
+      currentUser = res.user;
+      loadUser();
+    });
+}
+
+async function loadUser() {
+  const doc = await db.collection("users").doc(currentUser.uid).get();
+  currentGroup = doc.data().group;
+  render();
+}
+
+// GRUPPE
+function joinGroup() {
+  const code = prompt("Gruppen-Code:");
+  currentGroup = code;
+
+  db.collection("users").doc(currentUser.uid).update({
+    group: code
+  });
+
+  render();
+}
+
+// EVENT ERSTELLEN
+function createEvent() {
+  const title = document.getElementById("title").value;
+
+  db.collection("events").add({
     title,
-    creator: currentUser,
-    guesses: {},
-    result: null,
+    creator: currentUser.uid,
+    group: currentGroup,
     closed: false,
     createdAt: Date.now()
   });
-
-  document.getElementById("eventTitle").value = "";
 }
 
-async function submitGuess(eventId) {
-  const value = parseInt(prompt("Dein Tipp:"), 10);
-  if (Number.isNaN(value)) return alert("Bitte eine Zahl eingeben.");
+// TIPP (1x erlaubt)
+async function guess(eventId) {
+  const value = parseInt(prompt("Minuten:"));
 
-  const ref = db.collection("events").doc(eventId);
+  const ref = db.collection("events")
+    .doc(eventId)
+    .collection("guesses")
+    .doc(currentUser.uid);
+
   const doc = await ref.get();
-  const data = doc.data();
 
-  if (data.guesses && data.guesses[currentUser] !== undefined) {
-    return alert("Du hast schon getippt!");
+  if (doc.exists) {
+    alert("Schon getippt!");
+    return;
   }
 
-  await ref.update({
-    [`guesses.${currentUser}`]: value
-  });
+  await ref.set({ value });
 }
 
+// EVENT BEENDEN
 async function closeEvent(eventId) {
-  const realValue = parseInt(prompt("Echter Wert:"), 10);
-  if (Number.isNaN(realValue)) return alert("Bitte eine Zahl eingeben.");
+  const real = parseInt(prompt("Echter Wert:"));
 
-  const ref = db.collection("events").doc(eventId);
-  const doc = await ref.get();
-  const data = doc.data();
+  const guesses = await db.collection("events")
+    .doc(eventId)
+    .collection("guesses")
+    .get();
 
-  let bestUser = null;
-  let bestDiff = Infinity;
+  let best = null;
+  let bestDiff = 999;
 
-  Object.entries(data.guesses || {}).forEach(([user, guess]) => {
-    const diff = Math.abs(guess - realValue);
+  guesses.forEach(doc => {
+    const diff = Math.abs(doc.data().value - real);
     if (diff < bestDiff) {
       bestDiff = diff;
-      bestUser = user;
+      best = doc.id;
     }
   });
 
-  if (bestUser) {
-    const points = Math.max(10 - bestDiff, 0);
-    await db.collection("scores").doc(bestUser).set({
+  const points = Math.max(10 - bestDiff, 0);
+
+  if (best) {
+    db.collection("users").doc(best).update({
       points: firebase.firestore.FieldValue.increment(points)
-    }, { merge: true });
+    });
   }
 
-  await ref.update({
+  await db.collection("events").doc(eventId).update({
     closed: true,
-    result: realValue
+    result: real
   });
 }
 
-function renderEvents(events) {
-  const container = document.getElementById("events");
-  container.innerHTML = "";
+// RENDER
+function render() {
+  const content = document.getElementById("content");
 
-  events.forEach(({ id, ...e }) => {
-    const div = document.createElement("div");
-    div.className = "event";
+  content.innerHTML = "<h2>Events</h2>";
 
-    div.innerHTML = `
-      <b>${e.title}</b><br>
-      <div>Status: ${e.closed ? `Beendet – Wert: ${e.result}` : "Offen"}</div>
-      <div>Erstellt von: ${e.creator || "-"}</div>
-    `;
+  db.collection("events")
+    .where("group", "==", currentGroup)
+    .onSnapshot(snapshot => {
+      content.innerHTML = "";
 
-    if (!e.closed) {
-      const guessBtn = document.createElement("button");
-      guessBtn.textContent = "Tippen";
-      guessBtn.onclick = () => submitGuess(id);
-      div.appendChild(guessBtn);
-    }
+      snapshot.forEach(doc => {
+        const e = doc.data();
 
-    if (e.creator === currentUser && !e.closed) {
-      const closeBtn = document.createElement("button");
-      closeBtn.textContent = "Auflösen";
-      closeBtn.onclick = () => closeEvent(id);
-      div.appendChild(closeBtn);
-    }
+        let div = document.createElement("div");
+        div.className = "card";
 
-    container.appendChild(div);
-  });
+        div.innerHTML = `<b>${e.title}</b><br>`;
+
+        if (!e.closed) {
+          let btn = document.createElement("button");
+          btn.innerText = "Tippen";
+          btn.onclick = () => guess(doc.id);
+          div.appendChild(btn);
+
+          if (e.creator === currentUser.uid) {
+            let closeBtn = document.createElement("button");
+            closeBtn.innerText = "Beenden";
+            closeBtn.onclick = () => closeEvent(doc.id);
+            div.appendChild(closeBtn);
+          }
+        }
+
+        content.appendChild(div);
+      });
+    });
+
+  loadLeaderboard();
 }
 
-function renderLeaderboard(scores) {
-  const container = document.getElementById("leaderboard");
-  container.innerHTML = "";
+// LEADERBOARD
+function loadLeaderboard() {
+  const lb = document.getElementById("leaderboard");
 
-  scores.forEach(([name, data]) => {
-    const row = document.createElement("div");
-    row.className = "event";
-    row.textContent = `${name}: ${data.points || 0} Punkte`;
-    container.appendChild(row);
-  });
+  db.collection("users")
+    .where("group", "==", currentGroup)
+    .onSnapshot(snapshot => {
+      lb.innerHTML = "";
+
+      let arr = [];
+
+      snapshot.forEach(doc => {
+        arr.push(doc.data());
+      });
+
+      arr.sort((a,b) => b.points - a.points);
+
+      arr.forEach(u => {
+        lb.innerHTML += `${u.username}: ${u.points}<br>`;
+      });
+    });
 }
-
-db.collection("events").orderBy("createdAt", "desc").onSnapshot(snapshot => {
-  const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderEvents(events);
-});
-
-db.collection("scores").onSnapshot(snapshot => {
-  const scores = snapshot.docs
-    .map(doc => [doc.id, doc.data()])
-    .sort((a, b) => (b[1].points || 0) - (a[1].points || 0));
-
-  renderLeaderboard(scores);
-});
