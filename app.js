@@ -1,303 +1,144 @@
-let user = null;
-let userData = null;
-let currentTab = "events";
+// State Management
+const State = {
+    user: localStorage.getItem('guess_user'),
+    group: JSON.parse(localStorage.getItem('guess_group')),
+    activeTab: 'home'
+};
 
-// AUTH STATE
-auth.onAuthStateChanged(async (u) => {
-  user = u;
-
-  if (!user) {
-    document.getElementById("userStatus").innerText = "Nicht eingeloggt";
-    render();
-    return;
-  }
-
-  const ref = db.collection("users").doc(user.uid);
-  let doc = await ref.get();
-
-  if (!doc.exists) {
-    const username = prompt("Username:");
-    await ref.set({
-      username,
-      group: null,
-      points: 0,
-      isAdmin: false
-    });
-    doc = await ref.get();
-  }
-
-  userData = doc.data();
-
-  document.getElementById("userStatus").innerText =
-    "👤 " + userData.username;
-
-  render();
+// Initialisierung
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    switchTab('home');
+    
+    // Zoom-Sperre via JS (zusätzlich zu CSS)
+    document.addEventListener('touchmove', (e) => {
+        if (e.scale !== 1) e.preventDefault();
+    }, { passive: false });
 });
 
-// LOGIN / REGISTER
+// Login Funktion
 function login() {
-  const email = prompt("Email:");
-  const pass = prompt("Passwort:");
-
-  auth.signInWithEmailAndPassword(email, pass)
-    .catch(e => alert(e.message));
+    const nameInput = document.getElementById('username-input');
+    if (nameInput.value.trim() !== "") {
+        State.user = nameInput.value;
+        localStorage.setItem('guess_user', State.user);
+        checkAuth();
+    }
 }
 
-function register() {
-  const email = prompt("Email:");
-  const pass = prompt("Passwort:");
+// Auth-UI Update
+function checkAuth() {
+    const welcomeMsg = document.getElementById('welcome-msg');
+    const authUI = document.getElementById('auth-ui');
+    const gameUI = document.getElementById('game-ui');
 
-  auth.createUserWithEmailAndPassword(email, pass)
-    .catch(e => alert(e.message));
+    if (State.user) {
+        welcomeMsg.innerHTML = `Willkommen, <span class="neon-text">${State.user}</span>!`;
+        if(authUI) authUI.style.display = 'none';
+        if(gameUI) gameUI.style.display = 'block';
+    } else {
+        welcomeMsg.innerText = "Guess Game v1.2-beta";
+        if(authUI) authUI.style.display = 'flex';
+        if(gameUI) gameUI.style.display = 'none';
+    }
 }
 
-// ----------------
-// GROUPS
-// ----------------
-
-async function createGroup() {
-  const name = prompt("Gruppenname:");
-  if (!name) return;
-
-  const code = Math.random().toString(36).substring(2,8);
-
-  await db.collection("groups").doc(code).set({
-    name,
-    creator: user.uid
-  });
-
-  await db.collection("users").doc(user.uid).update({
-    group: code,
-    isAdmin: true
-  });
-
-  userData.group = code;
-  userData.isAdmin = true;
-
-  alert("Gruppe erstellt!\nCode: " + code);
-  render();
-}
-
-async function joinGroup() {
-  const code = prompt("Code:");
-  if (!code) return;
-
-  const group = await db.collection("groups").doc(code).get();
-
-  if (!group.exists) {
-    alert("Gruppe existiert nicht");
-    return;
-  }
-
-  await db.collection("users").doc(user.uid).update({
-    group: code,
-    isAdmin: false
-  });
-
-  userData.group = code;
-  userData.isAdmin = false;
-
-  render();
-}
-
-// ----------------
-// EVENTS
-// ----------------
-
-async function createEvent() {
-  const title = document.getElementById("title").value;
-
-  if (!userData.group) {
-    alert("Erst Gruppe beitreten!");
-    return;
-  }
-
-  if (!title) {
-    alert("Titel fehlt");
-    return;
-  }
-
-  await db.collection("events").add({
-    title,
-    group: userData.group,
-    creator: user.uid,
-    closed: false,
-    createdAt: Date.now()
-  });
-
-  document.getElementById("title").value = "";
-}
-
-// GUESS
-async function guess(eventId) {
-  const val = parseInt(prompt("Minuten:"));
-
-  if (isNaN(val)) return;
-
-  const ref = db.collection("events")
-    .doc(eventId)
-    .collection("guesses")
-    .doc(user.uid);
-
-  const doc = await ref.get();
-
-  if (doc.exists) {
-    alert("Du hast schon getippt!");
-    return;
-  }
-
-  await ref.set({ value: val });
-}
-
-// CLOSE EVENT
-async function closeEvent(eventId) {
-  if (!userData.isAdmin) {
-    alert("Nur Admin!");
-    return;
-  }
-
-  const real = parseInt(prompt("Echter Wert:"));
-  if (isNaN(real)) return;
-
-  const snap = await db.collection("events")
-    .doc(eventId)
-    .collection("guesses")
-    .get();
-
-  let results = [];
-
-  snap.forEach(doc => {
-    results.push({
-      uid: doc.id,
-      diff: Math.abs(doc.data().value - real)
-    });
-  });
-
-  results.sort((a,b) => a.diff - b.diff);
-
-  const rewards = [10,6,3];
-
-  for (let i=0; i<results.length && i<3; i++) {
-    const r = results[i];
-    await db.collection("users").doc(r.uid).update({
-      points: firebase.firestore.FieldValue.increment(rewards[i])
-    });
-  }
-
-  await db.collection("events").doc(eventId).update({
-    closed: true,
-    result: real
-  });
-}
-
-// ----------------
-// NAVIGATION
-// ----------------
-
+// Tab-Navigation
 function switchTab(tab) {
-  currentTab = tab;
-
-  document.querySelectorAll(".tabbar button")
-    .forEach(b => b.classList.remove("active"));
-
-  event.target.classList.add("active");
-
-  render();
-}
-
-// ----------------
-// RENDER
-// ----------------
-
-function render() {
-  const el = document.getElementById("content");
-
-  if (!user) {
-    el.innerHTML = `
-      <button onclick="login()">Login</button>
-      <button onclick="register()">Register</button>
-    `;
-    return;
-  }
-
-  if (currentTab === "events") renderEvents(el);
-  if (currentTab === "create") renderCreate(el);
-  if (currentTab === "leaderboard") renderLeaderboard(el);
-  if (currentTab === "groups") renderGroups(el);
-}
-
-// EVENTS VIEW
-function renderEvents(el) {
-  el.innerHTML = "<h2>Aktuelle Wetten</h2>";
-
-  if (!userData.group) {
-    el.innerHTML += "Keine Gruppe";
-    return;
-  }
-
-  db.collection("events")
-    .where("group","==",userData.group)
-    .onSnapshot(snap => {
-      el.innerHTML = "<h2>Aktuelle Wetten</h2>";
-
-      snap.forEach(doc => {
-        const e = doc.data();
-
-        let div = document.createElement("div");
-        div.className = "card fade";
-
-        div.innerHTML = `<b>${e.title}</b><br>`;
-
-        if (!e.closed) {
-          div.innerHTML += `<button onclick="guess('${doc.id}')">Tippen</button>`;
-
-          if (userData.isAdmin) {
-            div.innerHTML += `<button onclick="closeEvent('${doc.id}')">Beenden</button>`;
-          }
-        } else {
-          div.innerHTML += `Ergebnis: ${e.result}`;
-        }
-
-        el.appendChild(div);
-      });
+    State.activeTab = tab;
+    
+    // UI-Highlighting der Knöpfe
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
     });
+
+    const content = document.getElementById('tab-content');
+    renderContent(tab, content);
 }
 
-// CREATE
-function renderCreate(el) {
-  el.innerHTML = `
-    <h2>Neue Wette</h2>
-    <input id="title" placeholder="Event">
-    <button onclick="createEvent()">Erstellen</button>
-  `;
+// Content Rendering
+function renderContent(tab, container) {
+    if (!State.user && tab !== 'home') {
+        container.innerHTML = `<p style="text-align:center; margin-top:50px;">Bitte logge dich zuerst ein.</p>`;
+        return;
+    }
+
+    switch(tab) {
+        case 'home':
+            container.innerHTML = `
+                <div class="game-area">
+                    <h2 style="text-align:center">Rate die Zahl</h2>
+                    <input type="number" class="input-glass" style="width:100%" placeholder="Deine Zahl (1-100)">
+                    <button class="btn-liquid btn-primary">Tipp abgeben</button>
+                </div>
+            `;
+            break;
+            
+        case 'leaderboard':
+            container.innerHTML = `
+                <h2>Leaderboard</h2>
+                <div class="list-item"><span>1. Carlos</span> <span>2.500 Pkt.</span></div>
+                <div class="list-item"><span>2. Player2</span> <span>1.800 Pkt.</span></div>
+                <hr style="border: 0.5px solid var(--glass-border); margin: 20px 0;">
+                <h3>Deine Stats</h3>
+                <div class="list-item" style="border-left-color: var(--neon-cyan)">
+                    <span>Aktuelle Streak</span> <span style="color:var(--neon-cyan)">🔥 5 Tage</span>
+                </div>
+            `;
+            break;
+
+        case 'groups':
+            if (!State.group) {
+                container.innerHTML = `
+                    <h2>Gruppen</h2>
+                    <input id="new-group-name" class="input-glass" style="width:100%" placeholder="Name der neuen Gruppe">
+                    <button onclick="createGroup()" class="btn-liquid btn-primary">Gruppe erstellen</button>
+                    <p style="text-align:center">oder</p>
+                    <input id="join-code" class="input-glass" style="width:100%" placeholder="Einladungscode">
+                    <button onclick="joinGroup()" class="btn-liquid">Beitreten</button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <h2>Deine Gruppe</h2>
+                    <div class="btn-liquid" style="text-align:center; border-color: var(--neon-cyan)">
+                        <small>Name:</small><br><strong>${State.group.name}</strong>
+                    </div>
+                    <div class="btn-liquid" onclick="copyCode('${State.group.code}')">
+                        <small>Einladungscode (Klick zum Kopieren):</small><br>
+                        <strong style="color: var(--neon-cyan)">${State.group.code}</strong>
+                    </div>
+                    <button onclick="leaveGroup()" style="background:none; border:none; color:grey; width:100%; margin-top:20px;">Gruppe verlassen</button>
+                `;
+            }
+            break;
+    }
 }
 
-// LEADERBOARD
-function renderLeaderboard(el) {
-  el.innerHTML = "<h2>Leaderboard</h2>";
-
-  db.collection("users")
-    .where("group","==",userData.group)
-    .onSnapshot(snap => {
-      let arr = [];
-      snap.forEach(doc => arr.push(doc.data()));
-
-      arr.sort((a,b)=>b.points-a.points);
-
-      el.innerHTML = "<h2>Leaderboard</h2>";
-
-      arr.forEach(u => {
-        el.innerHTML += `<div class="card">${u.username}: ${u.points}</div>`;
-      });
-    });
+// Gruppen-Logik
+function createGroup() {
+    const name = document.getElementById('new-group-name').value;
+    if(!name) return;
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    State.group = { name, code };
+    localStorage.setItem('guess_group', JSON.stringify(State.group));
+    switchTab('groups');
 }
 
-// GROUPS
-function renderGroups(el) {
-  el.innerHTML = `
-    <h2>Gruppen</h2>
-    <button onclick="createGroup()">Neue Gruppe</button>
-    <button onclick="joinGroup()">Beitreten</button>
-    <p>Code: ${userData.group || "-"}</p>
-  `;
+function joinGroup() {
+    const code = document.getElementById('join-code').value;
+    if(code.length < 4) return;
+    State.group = { name: "Beigetretene Gruppe", code: code.toUpperCase() };
+    localStorage.setItem('guess_group', JSON.stringify(State.group));
+    switchTab('groups');
+}
+
+function leaveGroup() {
+    State.group = null;
+    localStorage.removeItem('guess_group');
+    switchTab('groups');
+}
+
+function copyCode(code) {
+    navigator.clipboard.writeText(code);
+    alert("Code kopiert: " + code);
 }
