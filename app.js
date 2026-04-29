@@ -6,9 +6,8 @@ let currentTab = "events";
 auth.onAuthStateChanged(async (u) => {
   user = u;
 
-  const el = document.getElementById("content");
-
   if (!user) {
+    userData = null;
     document.getElementById("welcome").innerText = "Nicht eingeloggt";
     render();
     return;
