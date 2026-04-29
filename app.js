@@ -185,7 +185,27 @@ async function closeEvent(eventId) {
       points: firebase.firestore.FieldValue.increment(rewards[i])
     });
   }
+// 🧠 Stats aktualisieren
 
+// Gewinner
+if (results.length > 0) {
+  const winner = results[0];
+
+  await db.collection("users").doc(winner.uid).update({
+    wins: firebase.firestore.FieldValue.increment(1),
+    games: firebase.firestore.FieldValue.increment(1),
+    streak: firebase.firestore.FieldValue.increment(1)
+  });
+}
+
+// Verlierer
+for (let i = 1; i < results.length; i++) {
+  await db.collection("users").doc(results[i].uid).update({
+    games: firebase.firestore.FieldValue.increment(1),
+    streak: 0
+  });
+}
+  
   await db.collection("events").doc(eventId).update({
     closed: true,
     result: real
