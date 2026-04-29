@@ -1,178 +1,137 @@
-/* --- VARIABLES --- */
-:root {
-  --neon-cyan: #00f2ff;
-  --neon-blue: #0066ff;
-  --glass-bg: rgba(20, 25, 40, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-}
-
-/* --- BASE & ZOOM-SCHUTZ --- */
-body.no-zoom {
+/* BASE */
+body {
   margin: 0;
-  font-family: -apple-system, "SF Pro Display", sans-serif;
-  background: var(--bg-gradient);
-  color: white;
-  min-height: 100vh;
-  touch-action: manipulation; /* Verhindert Double-Tap-Zoom */
-  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: linear-gradient(180deg, #f2f2f7, #e5e5ea);
 }
 
+/* APP CONTAINER */
 .app {
   padding-top: env(safe-area-inset-top);
 }
 
-/* --- LIQUID GLASS --- */
-.liquid-glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 1px solid var(--glass-border);
-}
-
-/* --- HEADER --- */
+/* HEADER (Glass Style) */
 .header {
   position: sticky;
   top: 0;
+  backdrop-filter: blur(30px);
+  background: rgba(255,255,255,0.6);
   padding: 20px;
-  border-bottom: 1px solid var(--glass-border);
-  z-index: 100;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .header h1 {
   margin: 0;
   font-size: 26px;
-  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
 }
 
 #userStatus {
   font-size: 13px;
-  color: #aaa;
-  margin-top: 4px;
+  color: #666;
 }
 
-/* --- CONTENT --- */
+/* CONTENT */
 #content {
   padding: 15px;
-  padding-bottom: 110px; /* Platz für Tabbar */
+  padding-bottom: 100px;
 }
 
-/* --- GLASS CARDS --- */
+/* GLASS CARDS */
 .card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(25px);
   border-radius: 24px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  transition: all 0.2s ease;
 }
 
+/* Card Press Animation */
 .card:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
-/* --- BUTTONS (Liquid Glass & Neon) --- */
+/* BUTTONS */
 button {
   width: 100%;
   padding: 16px;
   border-radius: 20px;
-  border: 1px solid rgba(0, 242, 255, 0.3);
+  border: none;
   font-weight: 600;
   font-size: 16px;
-  background: rgba(0, 242, 255, 0.1);
-  color: var(--neon-cyan);
-  backdrop-filter: blur(10px);
-  box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.05), 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
-  cursor: pointer;
-  margin-bottom: 10px;
-}
 
-button:active {
-  transform: scale(0.95);
-  background: rgba(0, 242, 255, 0.2);
-  box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
-}
-
-.btn-secondary {
-  border-color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(180deg, #0a84ff, #0066ff);
   color: white;
-  background: rgba(255, 255, 255, 0.05);
+
+  box-shadow: 0 6px 20px rgba(0,122,255,0.3);
+  transition: all 0.2s ease;
 }
 
-/* --- INPUTS --- */
+/* Button press */
+button:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* INPUT */
 input {
   width: 100%;
   padding: 16px;
   border-radius: 20px;
-  border: 1px solid var(--glass-border);
-  margin-bottom: 15px;
+  border: none;
+  margin-bottom: 10px;
   font-size: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
-  backdrop-filter: blur(10px);
-  box-sizing: border-box;
-  outline: none;
+
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(20px);
 }
 
-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-input:focus {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
-}
-
-/* --- TAB BAR --- */
+/* TAB BAR (iOS 26 Glass) */
 .tabbar {
   position: fixed;
   bottom: 0;
   width: 100%;
-  height: 85px;
+  height: 80px;
+
   display: flex;
   justify-content: space-around;
   align-items: center;
-  border-top: 1px solid var(--glass-border);
-  z-index: 100;
+
+  backdrop-filter: blur(40px);
+  background: rgba(255,255,255,0.6);
+
+  border-top: 1px solid rgba(0,0,0,0.05);
 }
 
+/* TAB BUTTONS */
 .tabbar button {
   background: none;
-  border: none;
+  color: #888;
+  font-size: 22px;
   box-shadow: none;
-  color: #666;
-  font-size: 24px;
-  width: auto;
-  margin: 0;
-  padding: 10px 20px;
-  filter: grayscale(100%);
-  opacity: 0.5;
-  transition: 0.3s;
 }
 
+/* ACTIVE TAB */
 .tabbar button.active {
-  filter: grayscale(0%);
-  opacity: 1;
-  color: var(--neon-cyan);
-  transform: scale(1.2) translateY(-5px);
-  text-shadow: 0 0 15px var(--neon-cyan);
+  color: #0a84ff;
+  transform: scale(1.2);
 }
 
-/* --- UTILS --- */
+/* ANIMATION */
 .fade {
-  animation: fade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.neon-text {
-  color: var(--neon-cyan);
-  text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+  animation: fade 0.25s ease;
 }
 
 @keyframes fade {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
