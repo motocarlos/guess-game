@@ -220,6 +220,7 @@ function render() {
     `;
     return;
   }
+  
 
   if (currentTab === "events") renderEvents(el);
   if (currentTab === "create") renderCreate(el);
