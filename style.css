@@ -1,32 +1,20 @@
-/* BASE */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont;
+  font-family: -apple-system;
   background: linear-gradient(180deg, #f2f2f7, #e5e5ea);
 }
 
-/* APP CONTAINER */
-.app {
-  padding-top: env(safe-area-inset-top);
-}
-
-/* HEADER (Glass Style) */
+/* HEADER */
 .header {
   position: sticky;
   top: 0;
-  backdrop-filter: blur(30px);
-  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(40px);
+  background: rgba(255,255,255,0.55);
   padding: 20px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 26px;
-}
-
-#userStatus {
-  font-size: 13px;
+#welcome {
+  font-size: 14px;
   color: #666;
 }
 
@@ -36,44 +24,44 @@ body {
   padding-bottom: 100px;
 }
 
-/* GLASS CARDS */
+/* CARDS */
 .card {
   background: rgba(255,255,255,0.6);
-  backdrop-filter: blur(25px);
+  backdrop-filter: blur(30px);
   border-radius: 24px;
   padding: 16px;
   margin-bottom: 12px;
+
   box-shadow:
     0 10px 30px rgba(0,0,0,0.08),
-    inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.2s ease;
+    inset 0 1px rgba(255,255,255,0.6);
+
+  transition: 0.2s;
 }
 
-/* Card Press Animation */
 .card:active {
   transform: scale(0.97);
 }
 
-/* BUTTONS */
+/* BUTTONS (Liquid Style) */
 button {
   width: 100%;
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 22px;
   border: none;
-  font-weight: 600;
-  font-size: 16px;
 
-  background: linear-gradient(180deg, #0a84ff, #0066ff);
+  background: rgba(0,122,255,0.85);
+  backdrop-filter: blur(20px);
+
   color: white;
+  font-weight: 600;
+  margin-top: 8px;
 
   box-shadow: 0 6px 20px rgba(0,122,255,0.3);
-  transition: all 0.2s ease;
 }
 
-/* Button press */
 button:active {
   transform: scale(0.96);
-  opacity: 0.9;
 }
 
 /* INPUT */
@@ -83,13 +71,11 @@ input {
   border-radius: 20px;
   border: none;
   margin-bottom: 10px;
-  font-size: 16px;
 
   background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(20px);
 }
 
-/* TAB BAR (iOS 26 Glass) */
+/* TABBAR */
 .tabbar {
   position: fixed;
   bottom: 0;
@@ -102,36 +88,18 @@ input {
 
   backdrop-filter: blur(40px);
   background: rgba(255,255,255,0.6);
-
-  border-top: 1px solid rgba(0,0,0,0.05);
 }
 
-/* TAB BUTTONS */
+/* TAB BUTTON */
 .tabbar button {
   background: none;
-  color: #888;
   font-size: 22px;
+  color: #888;
   box-shadow: none;
 }
 
 /* ACTIVE TAB */
 .tabbar button.active {
-  color: #0a84ff;
+  color: #007aff;
   transform: scale(1.2);
-}
-
-/* ANIMATION */
-.fade {
-  animation: fade 0.25s ease;
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
