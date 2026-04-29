@@ -7,7 +7,7 @@ auth.onAuthStateChanged(async (u) => {
   user = u;
 
   if (!user) {
-    document.getElementById("userStatus").innerText = "Nicht eingeloggt";
+    document.getElementById("welcome").innerText = "Nicht eingeloggt";
     render();
     return;
   }
@@ -21,15 +21,17 @@ auth.onAuthStateChanged(async (u) => {
       username,
       group: null,
       points: 0,
-      isAdmin: false
+      wins: 0,
+      games: 0,
+      streak: 0
     });
     doc = await ref.get();
   }
 
   userData = doc.data();
 
-  document.getElementById("userStatus").innerText =
-    "👤 " + userData.username;
+  document.getElementById("welcome").innerText =
+    `Willkommen beim Guess Game, ${userData.username}!`;
 
   render();
 });
@@ -212,6 +214,7 @@ function switchTab(tab) {
 function render() {
   const el = document.getElementById("content");
 
+  // 🔐 WICHTIG: Login check
   if (!user) {
     el.innerHTML = `
       <button onclick="login()">Login</button>
@@ -279,6 +282,7 @@ function renderLeaderboard(el) {
   db.collection("users")
     .where("group","==",userData.group)
     .onSnapshot(snap => {
+
       let arr = [];
       snap.forEach(doc => arr.push(doc.data()));
 
@@ -287,7 +291,19 @@ function renderLeaderboard(el) {
       el.innerHTML = "<h2>Leaderboard</h2>";
 
       arr.forEach(u => {
-        el.innerHTML += `<div class="card">${u.username}: ${u.points}</div>`;
+
+        let accuracy = u.games > 0
+          ? Math.round((u.wins / u.games) * 100)
+          : 0;
+
+        el.innerHTML += `
+          <div class="card">
+            <b>${u.username}</b><br>
+            Punkte: ${u.points}<br>
+            Trefferquote: ${accuracy}%<br>
+            Streak: ${u.streak}
+          </div>
+        `;
       });
     });
 }
@@ -296,8 +312,15 @@ function renderLeaderboard(el) {
 function renderGroups(el) {
   el.innerHTML = `
     <h2>Gruppen</h2>
-    <button onclick="createGroup()">Neue Gruppe</button>
-    <button onclick="joinGroup()">Beitreten</button>
-    <p>Code: ${userData.group || "-"}</p>
+
+    <div class="card">
+      <b>Aktuelle Gruppe:</b><br>
+      ${userData.group || "Keine"}
+    </div>
+
+    <div class="card">
+      <button onclick="createGroup()">Neue Gruppe erstellen</button>
+      <button onclick="joinGroup()">Gruppe beitreten</button>
+    </div>
   `;
 }
