@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 
-<!-- ✅ Kein Zoom + richtige Skalierung -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <title>Guess Game</title>
 
@@ -21,19 +21,32 @@
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
   <h1>Guess Game</h1>
   <div id="welcome"></div>
-  <div id="userStatus"></div>
 </div>
 
+<!-- CONTENT -->
 <div id="content"></div>
 
+<!-- TABBAR -->
 <div class="tabbar">
-  <button onclick="switchTab('events')">🎯</button>
-  <button onclick="switchTab('create')">➕</button>
-  <button onclick="switchTab('leaderboard')">🏆</button>
-  <button onclick="switchTab('groups')">👥</button>
+  <button onclick="switchTab('events', this)" class="active">
+    <span>🎯</span>
+  </button>
+
+  <button onclick="switchTab('create', this)">
+    <span>➕</span>
+  </button>
+
+  <button onclick="switchTab('leaderboard', this)">
+    <span>🏆</span>
+  </button>
+
+  <button onclick="switchTab('groups', this)">
+    <span>👥</span>
+  </button>
 </div>
 
 </body>
