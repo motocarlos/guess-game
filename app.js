@@ -6,6 +6,8 @@ let currentTab = "events";
 auth.onAuthStateChanged(async (u) => {
   user = u;
 
+  const el = document.getElementById("content");
+
   if (!user) {
     document.getElementById("welcome").innerText = "Nicht eingeloggt";
     render();
@@ -23,7 +25,8 @@ auth.onAuthStateChanged(async (u) => {
       points: 0,
       wins: 0,
       games: 0,
-      streak: 0
+      totalDiff: 0,
+      bestDiff: 999999
     });
     doc = await ref.get();
   }
@@ -36,7 +39,7 @@ auth.onAuthStateChanged(async (u) => {
   render();
 });
 
-// LOGIN / REGISTER
+// LOGIN
 function login() {
   const email = prompt("Email:");
   const pass = prompt("Passwort:");
@@ -45,6 +48,7 @@ function login() {
     .catch(e => alert(e.message));
 }
 
+// REGISTER
 function register() {
   const email = prompt("Email:");
   const pass = prompt("Passwort:");
@@ -53,10 +57,7 @@ function register() {
     .catch(e => alert(e.message));
 }
 
-// ----------------
 // GROUPS
-// ----------------
-
 async function createGroup() {
   const name = prompt("Gruppenname:");
   if (!name) return;
@@ -69,43 +70,34 @@ async function createGroup() {
   });
 
   await db.collection("users").doc(user.uid).update({
-    group: code,
-    isAdmin: true
+    group: code
   });
 
   userData.group = code;
-  userData.isAdmin = true;
 
-  alert("Gruppe erstellt!\nCode: " + code);
+  alert("Code: " + code);
   render();
 }
 
 async function joinGroup() {
   const code = prompt("Code:");
-  if (!code) return;
+  const g = await db.collection("groups").doc(code).get();
 
-  const group = await db.collection("groups").doc(code).get();
-
-  if (!group.exists) {
-    alert("Gruppe existiert nicht");
+  if (!g.exists) {
+    alert("Ungültiger Code");
     return;
   }
 
   await db.collection("users").doc(user.uid).update({
-    group: code,
-    isAdmin: false
+    group: code
   });
 
   userData.group = code;
-  userData.isAdmin = false;
-
+  alert("Beigetreten!");
   render();
 }
 
-// ----------------
 // EVENTS
-// ----------------
-
 async function createEvent() {
   const title = document.getElementById("title").value;
 
@@ -114,10 +106,7 @@ async function createEvent() {
     return;
   }
 
-  if (!title) {
-    alert("Titel fehlt");
-    return;
-  }
+  if (!title) return;
 
   await db.collection("events").add({
     title,
@@ -130,10 +119,8 @@ async function createEvent() {
   document.getElementById("title").value = "";
 }
 
-// GUESS
 async function guess(eventId) {
   const val = parseInt(prompt("Minuten:"));
-
   if (isNaN(val)) return;
 
   const ref = db.collection("events")
@@ -141,25 +128,19 @@ async function guess(eventId) {
     .collection("guesses")
     .doc(user.uid);
 
-  const doc = await ref.get();
-
-  if (doc.exists) {
-    alert("Du hast schon getippt!");
+  if ((await ref.get()).exists) {
+    alert("Schon getippt");
     return;
   }
 
   await ref.set({ value: val });
 }
 
-// CLOSE EVENT
+// CLOSE EVENT (MIT NEUER LOGIK)
 async function closeEvent(eventId) {
-  if (!userData.isAdmin) {
-    alert("Nur Admin!");
-    return;
-  }
 
   const real = parseInt(prompt("Echter Wert:"));
-  if (isNaN(real)) return;
+  if (isNaN(real) || real <= 0) return;
 
   const snap = await db.collection("events")
     .doc(eventId)
@@ -169,72 +150,70 @@ async function closeEvent(eventId) {
   let results = [];
 
   snap.forEach(doc => {
+    const guess = doc.data().value;
+    const diff = Math.abs(guess - real);
+
+    const score = Math.max(0, Math.round(100 * (1 - diff / real)));
+
     results.push({
       uid: doc.id,
-      diff: Math.abs(doc.data().value - real)
+      diff,
+      score
     });
   });
 
-  results.sort((a,b) => a.diff - b.diff);
+  // Punkte + Stats
+  for (let r of results) {
 
-  const rewards = [10,6,3];
-
-  for (let i=0; i<results.length && i<3; i++) {
-    const r = results[i];
     await db.collection("users").doc(r.uid).update({
-      points: firebase.firestore.FieldValue.increment(rewards[i])
+      points: firebase.firestore.FieldValue.increment(r.score),
+      games: firebase.firestore.FieldValue.increment(1),
+      totalDiff: firebase.firestore.FieldValue.increment(r.diff),
+      bestDiff: firebase.firestore.FieldValue.increment(0) // wird unten korrigiert
+    });
+
+    // best guess prüfen
+    const uDoc = await db.collection("users").doc(r.uid).get();
+    const best = uDoc.data().bestDiff;
+
+    if (r.diff < best) {
+      await db.collection("users").doc(r.uid).update({
+        bestDiff: r.diff
+      });
+    }
+  }
+
+  // Gewinner
+  if (results.length > 0) {
+    results.sort((a,b)=>a.diff-b.diff);
+
+    await db.collection("users").doc(results[0].uid).update({
+      wins: firebase.firestore.FieldValue.increment(1)
     });
   }
-// 🧠 Stats aktualisieren
 
-// Gewinner
-if (results.length > 0) {
-  const winner = results[0];
-
-  await db.collection("users").doc(winner.uid).update({
-    wins: firebase.firestore.FieldValue.increment(1),
-    games: firebase.firestore.FieldValue.increment(1),
-    streak: firebase.firestore.FieldValue.increment(1)
-  });
-}
-
-// Verlierer
-for (let i = 1; i < results.length; i++) {
-  await db.collection("users").doc(results[i].uid).update({
-    games: firebase.firestore.FieldValue.increment(1),
-    streak: 0
-  });
-}
-  
   await db.collection("events").doc(eventId).update({
     closed: true,
     result: real
   });
 }
 
-// ----------------
-// NAVIGATION
-// ----------------
-
-function switchTab(tab) {
+// NAV
+function switchTab(tab, el) {
   currentTab = tab;
 
   document.querySelectorAll(".tabbar button")
     .forEach(b => b.classList.remove("active"));
 
-  event.target.classList.add("active");
+  el.classList.add("active");
 
   render();
 }
 
-// ----------------
 // RENDER
-// ----------------
-
 function render() {
   const el = document.getElementById("content");
 
-  // 🔐 WICHTIG: Login check
   if (!user) {
     el.innerHTML = `
       <button onclick="login()">Login</button>
@@ -267,14 +246,13 @@ function renderEvents(el) {
         const e = doc.data();
 
         let div = document.createElement("div");
-        div.className = "card fade";
+        div.className = "card";
 
         div.innerHTML = `<b>${e.title}</b><br>`;
 
         if (!e.closed) {
           div.innerHTML += `<button onclick="guess('${doc.id}')">Tippen</button>`;
-
-          if (userData.isAdmin) {
+          if (e.creator === user.uid) {
             div.innerHTML += `<button onclick="closeEvent('${doc.id}')">Beenden</button>`;
           }
         } else {
@@ -316,12 +294,17 @@ function renderLeaderboard(el) {
           ? Math.round((u.wins / u.games) * 100)
           : 0;
 
+        let avgDiff = u.games > 0
+          ? Math.round(u.totalDiff / u.games)
+          : 0;
+
         el.innerHTML += `
           <div class="card">
             <b>${u.username}</b><br>
             Punkte: ${u.points}<br>
             Trefferquote: ${accuracy}%<br>
-            Streak: ${u.streak}
+            Ø Abweichung: ${avgDiff}<br>
+            Bester Tipp: ${u.bestDiff}
           </div>
         `;
       });
@@ -334,13 +317,12 @@ function renderGroups(el) {
     <h2>Gruppen</h2>
 
     <div class="card">
-      <b>Aktuelle Gruppe:</b><br>
-      ${userData.group || "Keine"}
+      Aktuelle Gruppe:<br><b>${userData.group || "-"}</b>
     </div>
 
     <div class="card">
-      <button onclick="createGroup()">Neue Gruppe erstellen</button>
-      <button onclick="joinGroup()">Gruppe beitreten</button>
+      <button onclick="createGroup()">Neue Gruppe</button>
+      <button onclick="joinGroup()">Beitreten</button>
     </div>
   `;
 }
